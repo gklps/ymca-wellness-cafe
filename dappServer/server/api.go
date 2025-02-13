@@ -33,7 +33,7 @@ func APIExecuteContract(c *gin.Context) {
 		fmt.Printf("Error reading response body: %s\n", err)
 		return
 	}
-	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.HomeDirectory, req.ContractDirectory, "")
+	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.HomeDirectory, "")
 	if err != nil {
 		fmt.Println("Failed to execute Contract err :", err)
 	}

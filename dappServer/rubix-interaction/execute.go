@@ -2,6 +2,7 @@ package rubix_interaction
 
 import (
 	"bytes"
+	"dapp-server/config"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -18,13 +19,13 @@ import (
 // Execute handles the contract execution process
 func Execute(
 	contractHash string, executorDid string,
-	homeDir string, contractDir string, contractMsgFile string,
+	homeDir string, contractMsgFile string,
 ) (*ExecutionResult, error) {
 	// Load config to get API URL
-	// cfg, err := config.LoadConfig(homeDir)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to load config: %w", err)
-	// }
+	cfg, err := config.LoadConfig(CONFIG_PATH)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// contractMsg, err := parseContractMsgFromJSON(contractMsgFile)
 	// if err != nil {
@@ -40,17 +41,17 @@ func Execute(
 		"token_count": 1
 	  }}}`
 	// Call execute-smart-contract API
-	requestID, err := executeSmartContract("", contractHash, executorDid, contractMsg) //(cfg.Network.DeployerNodeURL, contractHash, executorDid, contractMsg)
+	requestID, err := executeSmartContract(cfg.Network.DeployerNodeURL, contractHash, executorDid, contractMsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute smart contract: %w", err)
 	}
 
 	// Call signature-response API
-	if err := signatureResponse("", requestID); err != nil {
+	if err := signatureResponse(cfg.Network.DeployerNodeURL, requestID); err != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
 
-	contractResult, err := callWasm(contractDir, contractMsg)
+	contractResult, err := callWasm(contractHash, contractMsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call wasm contract: %w", err)
 	}
@@ -193,8 +194,8 @@ func getSmartContractChainBlocks(baseURL string, contractHash string, onlyLatest
 	return apiResp.SmartContractBlocks, nil
 }
 
-func callWasm(contractDir string, contractMsg string) (string, error) {
-	wasmModulePath, err := getWasmContractPath(contractDir)
+func callWasm(contractHash string, contractMsg string) (string, error) {
+	wasmModulePath, err := getWasmContractPath(contractHash)
 	if err != nil {
 		return "", fmt.Errorf("failed to get wasm contract path: %w", err)
 	}
@@ -214,22 +215,23 @@ func callWasm(contractDir string, contractMsg string) (string, error) {
 	return contractResult, nil
 }
 
-func getWasmContractPath(contractDir string) (string, error) {
+func getWasmContractPath(contractHash string) (string, error) {
 	currentWorkingDir, err := os.Getwd()
+	fmt.Println("The current working Directory is : ", currentWorkingDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
+	// Here this path should be dynamic
+	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes/node2/SmartContract", contractHash)
 
-	artifactsDir := filepath.Join(currentWorkingDir, "artifacts")
-
-	entries, err := os.ReadDir(artifactsDir)
+	entries, err := os.ReadDir(contractDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to read directory: %w", err)
 	}
 
 	for _, entry := range entries {
 		if strings.HasSuffix(entry.Name(), ".wasm") {
-			return filepath.Join(artifactsDir, entry.Name()), nil
+			return filepath.Join(contractDir, entry.Name()), nil
 		}
 	}
 

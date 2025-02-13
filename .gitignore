@@ -11,6 +11,7 @@
 
 rubix-nodes/
 **/target/
+.config
 
 # Go-specific files
 *.log

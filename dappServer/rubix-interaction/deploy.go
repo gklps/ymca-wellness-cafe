@@ -2,6 +2,7 @@ package rubix_interaction
 
 import (
 	"bytes"
+	"dapp-server/config"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -17,13 +18,15 @@ import (
 	// "github.com/rubixchain/rubix-nexus/utils"
 )
 
+const CONFIG_PATH = ".config/config.toml"
+
 // Deploy handles the contract deployment process
 func Deploy(wasmPath string, libPath string, deployerDid string, statePath string) (*DeploymentResult, error) {
 	// Load config to get API URL
-	// cfg, err := config.LoadConfig(homeDir)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to load config: %w", err)
-	// }
+	cfg, err := config.LoadConfig(CONFIG_PATH)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load config: %w", err)
+	}
 
 	// Validate contract directory
 	// if !isValidContractDir(contractDir) {
@@ -57,7 +60,7 @@ func Deploy(wasmPath string, libPath string, deployerDid string, statePath strin
 	// }
 
 	// onStage(StageGenerate)
-	contractHash, err := generateSmartContract("", deployerDid, wasmPath, libPath, statePath) //cfg.Network.DeployerNodeURL, deployerDid, wasmPath, libPath, statePath)
+	contractHash, err := generateSmartContract(cfg.Network.DeployerNodeURL, deployerDid, wasmPath, libPath, statePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate smart contract: %w", err)
 	}
@@ -65,13 +68,13 @@ func Deploy(wasmPath string, libPath string, deployerDid string, statePath strin
 	// onStage(StageDeploy)
 
 	// Call deploy-smart-contract API
-	requestID, err := deploySmartContract("", contractHash, deployerDid) //(cfg.Network.DeployerNodeURL, contractHash, deployerDid)
+	requestID, err := deploySmartContract(cfg.Network.DeployerNodeURL, contractHash, deployerDid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy smart contract: %w", err)
 	}
 
 	// Call signature-response API
-	err2 := signatureResponse("", requestID) //(cfg.Network.DeployerNodeURL, requestID);
+	err2 := signatureResponse(cfg.Network.DeployerNodeURL, requestID)
 	if err2 != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
