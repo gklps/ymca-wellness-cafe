@@ -1,0 +1,42 @@
+# Binaries and build artifacts
+/bin/
+/build/
+/out/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+rubix-nodes/
+**/target/
+
+# Go-specific files
+*.log
+*.sum
+*.mod
+*.cache
+*.db
+*.key
+*.pem
+
+# IDE/editor files
+.vscode/
+.idea/
+*.iml
+
+# Go vendor directory (if using vendoring)
+vendor/
+
+# Go test cache
+/cache/
+/testdata/
+
+# Dependency directories
+node_modules/
+tmp/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
