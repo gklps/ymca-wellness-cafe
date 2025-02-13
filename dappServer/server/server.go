@@ -67,6 +67,8 @@ func BootupServer() {
 	// Define endpoints
 	// router.POST(nftDappCallbackHandler, nftDappHandler) // NFT
 	router.POST("/api/call-back-trigger", ftDappHandler) // FT
+	router.POST("/api/deploy-contract", APIDeployContract)
+	router.POST("/api/execute-contract", APIExecuteContract)
 
 	// router.GET("/request-status", getRequestStatusHandler)
 
@@ -119,7 +121,7 @@ func contractInputHandler(w http.ResponseWriter, r *http.Request) {
 // Handler function for /callback/nft
 func ftDappHandler(c *gin.Context) {
 	var req ContractInputRequest
-	fmt.Println("Jandler trggered")
+	fmt.Println("Handler trggered")
 	err := json.NewDecoder(c.Request.Body).Decode(&req)
 
 	if err != nil {
