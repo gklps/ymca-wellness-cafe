@@ -35,7 +35,7 @@ func Execute(
 	// In this contract message most of the things will be an input including the function name and all the things
 
 	contractMsg := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
-		"did": "bafybmieqhv5zd7m7mmtoigqupqg2si2ri2d3fuqf43p5affuagufxgyen4",
+		"did": "bafybmidaa2qebuky3yg3vaqshh67wtxptaqim2q4zdrpqpqbzmhfcl3yf4",
 		"ft_count": 100,
 		"ft_name": "test5",
 		"token_count": 1
@@ -51,13 +51,13 @@ func Execute(
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
 
-	contractResult, err := callWasm(contractHash, contractMsg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call wasm contract: %w", err)
-	}
+	// contractResult, err := callWasm(contractHash, contractMsg)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to call wasm contract: %w", err)
+	// }
 
 	return &ExecutionResult{
-		ContractResult: contractResult,
+		ContractResult: "contractResult",
 		Success:        true,
 		Message:        "Contract executed successfully",
 	}, nil

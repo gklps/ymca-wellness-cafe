@@ -12,6 +12,8 @@
 rubix-nodes/
 **/target/
 .config
+Cargo.lock
+
 
 # Go-specific files
 *.log

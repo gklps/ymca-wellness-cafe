@@ -1,11 +1,15 @@
 package server
 
 import (
+	"dapp-server/config"
+	rubix_interaction "dapp-server/rubix-interaction"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -122,7 +126,12 @@ func contractInputHandler(w http.ResponseWriter, r *http.Request) {
 func ftDappHandler(c *gin.Context) {
 	var req ContractInputRequest
 	fmt.Println("Handler trggered")
-	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	cfg, err := config.LoadConfig(".config/config.toml")
+	if err != nil {
+		fmt.Errorf("failed to load config: %w", err)
+	}
+
+	err = json.NewDecoder(c.Request.Body).Decode(&req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
@@ -130,42 +139,42 @@ func ftDappHandler(c *gin.Context) {
 		return
 	}
 	// // config := GetConfig()
-	// smartContractHash := req.SmartContractHash
-	// fmt.Println("Received Smart Contract hash: ", req.SmartContractHash)
+	smartContractHash := req.SmartContractHash
+	fmt.Println("Received Smart Contract hash: ", smartContractHash)
 
-	// smartContractTokenData := rubix.GetSmartContractData(smartContractHash, "") //config.NodeAddress)
-	// if smartContractTokenData == nil {
-	// 	fmt.Println("Unable to fetch latest smart contract data")
-	// 	return
-	// }
+	smartContractTokenData := rubix_interaction.GetSmartContractData(smartContractHash, cfg.Network.DeployerNodeURL) //config.NodeAddress)
+	if smartContractTokenData == nil {
+		fmt.Println("Unable to fetch latest smart contract data")
+		return
+	}
 
-	// fmt.Println("Smart Contract Token Data :", string(smartContractTokenData))
+	fmt.Println("Smart Contract Token Data :", string(smartContractTokenData))
 
-	// var dataReply SmartContractDataReply
+	var dataReply SmartContractDataReply
 
-	// if err := json.Unmarshal(smartContractTokenData, &dataReply); err != nil {
-	// 	fmt.Println("Error:", err)
-	// 	return
-	// }
-	// fmt.Println("Data reply in runDappHandler", dataReply)
-	// smartContractData := dataReply.SCTDataReply
-	// var relevantData string
-	// for _, reply := range smartContractData {
-	// 	fmt.Println("SmartContractData:", reply.SmartContractData)
-	// 	relevantData = reply.SmartContractData
-	// }
+	if err := json.Unmarshal(smartContractTokenData, &dataReply); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Data reply in runDappHandler", dataReply)
+	smartContractData := dataReply.SCTDataReply
+	var relevantData string
+	for _, reply := range smartContractData {
+		fmt.Println("SmartContractData:", reply.SmartContractData)
+		relevantData = reply.SmartContractData
+	}
 	// contractInput := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
 	// 	"did": "bafybmihxaehnreq4ygnq3re3soob5znuj7hxoku6aeitdukif75umdv2nu",
 	// 	"ft_count": 100,
 	// 	"ft_name": "test5",
 	// 	"token_count": 1
 	//   }}}`
-	relevantData := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
-		"did": "bafybmieqhv5zd7m7mmtoigqupqg2si2ri2d3fuqf43p5affuagufxgyen4",
-		"ft_count": 100,
-		"ft_name": "test5",
-		"token_count": 1
-	  }}}`
+	// relevantData := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
+	// 	"did": "bafybmieqhv5zd7m7mmtoigqupqg2si2ri2d3fuqf43p5affuagufxgyen4",
+	// 	"ft_count": 100,
+	// 	"ft_name": "test5",
+	// 	"token_count": 1
+	//   }}}`
 	var inputMap map[string]interface{}
 	err1 := json.Unmarshal([]byte(relevantData), &inputMap)
 	if err1 != nil {
@@ -207,13 +216,17 @@ func ftDappHandler(c *gin.Context) {
 	// }
 
 	hostFnRegistry := wasmbridge.NewHostFunctionRegistry()
-
+	wasmPath, err := getWasmContractPath(smartContractHash)
+	if err != nil {
+		fmt.Println("Failed to get wasm path")
+	}
 	// Initialize the WASM module
+
 	wasmModule, err := wasmbridge.NewWasmModule(
 		// config.ContractsInfo["ft"].ContractPath,
-		"C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/first-contract/target/wasm32-unknown-unknown/debug/first_contract.wasm",
+		wasmPath,
 		hostFnRegistry,
-		wasmbridge.WithRubixNodeAddress("http://localhost:20003"), //config.NodeAddress),
+		wasmbridge.WithRubixNodeAddress(cfg.Network.DeployerNodeURL), //config.NodeAddress),
 		wasmbridge.WithQuorumType(2),
 	)
 	if err != nil {
@@ -268,6 +281,29 @@ func ftDappHandler(c *gin.Context) {
 
 	// Return a response
 	c.JSON(http.StatusOK, resultFinal)
+}
+
+func getWasmContractPath(contractHash string) (string, error) {
+	currentWorkingDir, err := os.Getwd()
+	fmt.Println("The current working Directory is : ", currentWorkingDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	// Here this path should be dynamic
+	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes/node2/SmartContract", contractHash)
+
+	entries, err := os.ReadDir(contractDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".wasm") {
+			return filepath.Join(contractDir, entry.Name()), nil
+		}
+	}
+
+	return "", fmt.Errorf("no wasm contract found in directory: %v", contractDir)
 }
 
 func executeAndGetContractResult(wasmModule *wasmbridge.WasmModule, contractInput string) (string, error) {

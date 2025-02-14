@@ -10,18 +10,19 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// Need to check whether all the params here are needed
 type ExecuteRequest struct {
-	ContractHash      string
-	ExecutorDid       string
-	HomeDirectory     string
-	ContractDirectory string
+	ContractHash      string `json:"contract_hash"`
+	ExecutorDid       string `json:"executor_did"`
+	HomeDirectory     string `json:"home_directory"`     //This is not used anywhere as of now
+	ContractDirectory string `json:"contract_directory"` //This is also not used anywhere
 }
 
 type DeployRequest struct {
-	WasmPath    string
-	LibPath     string
-	DeployerDid string
-	StatePath   string
+	WasmPath    string `json:"wasm_path"`
+	LibPath     string `json:"lib_path"`
+	DeployerDid string `json:"deployer_did"`
+	StatePath   string `json:"state_path"`
 }
 
 func APIExecuteContract(c *gin.Context) {

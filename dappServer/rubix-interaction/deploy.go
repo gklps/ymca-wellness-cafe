@@ -78,7 +78,7 @@ func Deploy(wasmPath string, libPath string, deployerDid string, statePath strin
 	if err2 != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
-
+	RegisterCallBackUrl(contractHash, "8080", "api/call-back-trigger", "20002")
 	return &DeploymentResult{
 		ContractHash: contractHash,
 		Success:      true,
