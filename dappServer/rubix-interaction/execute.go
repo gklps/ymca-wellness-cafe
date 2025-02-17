@@ -12,14 +12,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	// "github.com/rubixchain/rubix-nexus/config"
 	wasmbridge "github.com/rubixchain/rubix-wasm/go-wasm-bridge"
 )
 
 // Execute handles the contract execution process
 func Execute(
 	contractHash string, executorDid string,
-	homeDir string, contractMsgFile string,
+	contractInput string, contractMsgFile string,
 ) (*ExecutionResult, error) {
 	// Load config to get API URL
 	cfg, err := config.LoadConfig(CONFIG_PATH)
@@ -27,21 +26,7 @@ func Execute(
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// contractMsg, err := parseContractMsgFromJSON(contractMsgFile)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to read contract message file: %w", err)
-	// }
-
-	// In this contract message most of the things will be an input including the function name and all the things
-
-	contractMsg := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
-		"did": "bafybmidaa2qebuky3yg3vaqshh67wtxptaqim2q4zdrpqpqbzmhfcl3yf4",
-		"ft_count": 100,
-		"ft_name": "test5",
-		"token_count": 1
-	  }}}`
-	// Call execute-smart-contract API
-	requestID, err := executeSmartContract(cfg.Network.DeployerNodeURL, contractHash, executorDid, contractMsg)
+	requestID, err := executeSmartContract(cfg.Network.DeployerNodeURL, contractHash, executorDid, contractInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute smart contract: %w", err)
 	}
@@ -50,11 +35,6 @@ func Execute(
 	if err := signatureResponse(cfg.Network.DeployerNodeURL, requestID); err != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
-
-	// contractResult, err := callWasm(contractHash, contractMsg)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to call wasm contract: %w", err)
-	// }
 
 	return &ExecutionResult{
 		ContractResult: "contractResult",

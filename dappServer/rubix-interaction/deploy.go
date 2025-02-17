@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	// "github.com/rubixchain/rubix-nexus/config"
-	// "github.com/rubixchain/rubix-nexus/utils"
 )
 
 const CONFIG_PATH = ".config/config.toml"
@@ -28,46 +26,11 @@ func Deploy(wasmPath string, libPath string, deployerDid string, statePath strin
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Validate contract directory
-	// if !isValidContractDir(contractDir) {
-	// 	return nil, fmt.Errorf("invalid contract directory: must contain lib.rs")
-	// }
-
-	// // Check build prerequisites
-	// if err := verifyBuildPrerequisites(); err != nil {
-	// 	return nil, err
-	// }
-
-	// onStage(StageBuild)
-	// // Build Rust project to WASM
-	// wasmPath, err := buildWasm(contractDir)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to build WASM: %w", err)
-	// }
-
-	// // Get file paths
-	// libPath := filepath.Join(contractDir, "src", "lib.rs")
-	// statePath := filepath.Join(filepath.Dir(contractDir), "artifacts", "state.json")
-
-	// Create empty state.json if it doesn't exist
-	// if !utils.FileExists(statePath) {
-	// 	if err := os.MkdirAll(filepath.Dir(statePath), 0755); err != nil {
-	// 		return nil, fmt.Errorf("failed to create artifacts directory: %w", err)
-	// 	}
-	// 	if err := os.WriteFile(statePath, []byte("{}"), 0644); err != nil {
-	// 		return nil, fmt.Errorf("failed to create state.json: %w", err)
-	// 	}
-	// }
-
-	// onStage(StageGenerate)
 	contractHash, err := generateSmartContract(cfg.Network.DeployerNodeURL, deployerDid, wasmPath, libPath, statePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate smart contract: %w", err)
 	}
 
-	// onStage(StageDeploy)
-
-	// Call deploy-smart-contract API
 	requestID, err := deploySmartContract(cfg.Network.DeployerNodeURL, contractHash, deployerDid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy smart contract: %w", err)
@@ -264,24 +227,6 @@ func verifyBuildPrerequisites() error {
 		}
 	}
 
-	// Windows-specific checks
-	// 	if runtime.GOOS == "windows" {
-	// 		// Check for MSVC build tools
-	// 		if _, err := exec.LookPath("link.exe"); err != nil {
-	// 			return fmt.Errorf(`Build tools not found. On Windows, you need:
-
-	// 1. Visual Studio Build Tools with C++ support
-	//    Download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
-
-	// 2. During installation, select "Desktop development with C++"
-
-	// Alternative: Consider using Windows Subsystem for Linux (WSL)
-	// 1. Install WSL: wsl --install
-	// 2. Install Rust in WSL
-	// 3. Run this tool in WSL`)
-	// 		}
-	// 	}
-
 	return nil
 }
 
@@ -345,80 +290,6 @@ func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
-
-// Dummy API functions (to be implemented with real API calls)
-// func registerCallbackURL(baseURL string, dappServer string, contractEndpoint string, contractHash string) error {
-// 	if contractEndpoint == "" {
-// 		return fmt.Errorf("smart contract callback endpoint for %v cannot be empty", contractHash)
-// 	}
-
-// 	if dappServer == "" {
-// 		return fmt.Errorf("smart contract dapp server url for %v cannot be empty", contractHash)
-// 	}
-
-// 	callbackURL, err := url.JoinPath(dappServer, contractEndpoint)
-// 	if err != nil {
-// 		return fmt.Errorf("unable to form callback url, err: %v", err)
-// 	}
-
-// 	requestBody := struct {
-// 		CallbackURL        string `json:"CallBackURL"`
-// 		SmartContractToken string `json:"SmartContractToken"`
-// 	}{
-// 		CallbackURL:        callbackURL,
-// 		SmartContractToken: contractHash,
-// 	}
-
-// 	fmt.Printf("Request Body: %v", requestBody)
-
-// 	// Marshal request body
-// 	bodyBytes, err := json.Marshal(requestBody)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to marshal request body: %w", err)
-// 	}
-
-// 	// Create request
-// 	requestURL, err := url.JoinPath(baseURL, "/api/register-callback-url")
-// 	if err != nil {
-// 		return fmt.Errorf("deploy: unable to form request URL")
-// 	}
-
-// 	req, err := http.NewRequest("POST", requestURL, bytes.NewBuffer(bodyBytes))
-// 	if err != nil {
-// 		return fmt.Errorf("failed to create request: %w", err)
-// 	}
-
-// 	// Set headers
-// 	req.Header.Set("Content-Type", "application/json")
-
-// 	// Send request
-// 	client := &http.Client{}
-// 	resp, err := client.Do(req)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to send request: %w", err)
-// 	}
-// 	defer resp.Body.Close()
-
-// 	// Read response body
-// 	body, err := io.ReadAll(resp.Body)
-// 	if err != nil {
-// 		return fmt.Errorf("failed to read response: %w", err)
-// 	}
-
-// 	// Parse response
-// 	var apiResp SmartContractAPIResponseV1
-// 	if err := json.Unmarshal(body, &apiResp); err != nil {
-// 		return fmt.Errorf("failed to parse response: %w", err)
-// 	}
-
-// 	// Check response status
-// 	if !apiResp.Status {
-// 		return fmt.Errorf(apiResp.Message)
-// 	}
-
-// 	fmt.Println("Callback URL %v for contract %v registered successfully", callbackURL)
-// 	return nil
-// }
 
 func signatureResponse(baseURL, requestID string) error {
 	// Create request body

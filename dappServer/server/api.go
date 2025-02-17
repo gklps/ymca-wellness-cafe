@@ -14,7 +14,7 @@ import (
 type ExecuteRequest struct {
 	ContractHash      string `json:"contract_hash"`
 	ExecutorDid       string `json:"executor_did"`
-	HomeDirectory     string `json:"home_directory"`     //This is not used anywhere as of now
+	ContractInput     string `json:"contract_input"`     //This is not used anywhere as of now
 	ContractDirectory string `json:"contract_directory"` //This is also not used anywhere
 }
 
@@ -34,7 +34,7 @@ func APIExecuteContract(c *gin.Context) {
 		fmt.Printf("Error reading response body: %s\n", err)
 		return
 	}
-	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.HomeDirectory, "")
+	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.ContractInput, "")
 	if err != nil {
 		fmt.Println("Failed to execute Contract err :", err)
 	}

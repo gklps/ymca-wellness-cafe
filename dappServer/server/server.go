@@ -39,20 +39,14 @@ type SCTDataReply struct {
 	SmartContractData string
 }
 
-// func Bootup() {
-// 	fmt.Println("Server Started")
-// 	r := mux.NewRouter()
-
-// 	r.HandleFunc("/api/v1/contract-input", contractInputHandler).Methods("POST")
-// 	err := http.ListenAndServe(":8080", r)
-// 	if err != nil {
-// 		fmt.Printf("Error starting server: %s\n", err)
-// 	}
-// }
-
 func BootupServer() {
+	gin.SetMode(gin.ReleaseMode) //
+	log.Println("Current Gin Mode:", gin.Mode())
+
 	// Initialize a Gin router
 	router := gin.Default()
+	log.Println("Current Gin Mode:", gin.Mode())
+
 	// config := GetConfig()
 
 	log.SetFlags(log.LstdFlags)
@@ -100,22 +94,6 @@ func contractInputHandler(w http.ResponseWriter, r *http.Request) {
 	port := req.Port
 	nodeName := os.Getenv(port)
 	fmt.Println(nodeName)
-	// folderPath, _ := GetRubixSmartContractPath(req.SmartContractHash, "binaryCodeFile.wasm", nodeName)
-	// schemaPath, _ := GetRubixSchemaPath(req.SmartContractHash, nodeName, "schemaCodeFile.json")
-	// fmt.Println(folderPath)
-	// _, err1 := os.Stat(folderPath)
-	// fmt.Println(err1)
-	// if os.IsNotExist(err1) {
-	// 	fmt.Println("Smart Contract not found")
-	// 	RunSmartContract(folderPath, schemaPath, port, req.SmartContractHash)
-	// } else if err == nil {
-	// 	fmt.Printf("Folder '%s' exists", folderPath)
-
-	// 	RunSmartContract(folderPath, schemaPath, port, req.SmartContractHash)
-
-	// } else {
-	// 	fmt.Printf("Error while checking folder: %v\n", err)
-	// }
 
 	resp := RubixResponse{Status: true, Message: "Callback Successful", Result: "Success"}
 	json.NewEncoder(w).Encode(resp)
@@ -163,18 +141,6 @@ func ftDappHandler(c *gin.Context) {
 		fmt.Println("SmartContractData:", reply.SmartContractData)
 		relevantData = reply.SmartContractData
 	}
-	// contractInput := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
-	// 	"did": "bafybmihxaehnreq4ygnq3re3soob5znuj7hxoku6aeitdukif75umdv2nu",
-	// 	"ft_count": 100,
-	// 	"ft_name": "test5",
-	// 	"token_count": 1
-	//   }}}`
-	// relevantData := `{"mint_sample_ft":{"name": "rubix1", "ft_info": {
-	// 	"did": "bafybmieqhv5zd7m7mmtoigqupqg2si2ri2d3fuqf43p5affuagufxgyen4",
-	// 	"ft_count": 100,
-	// 	"ft_name": "test5",
-	// 	"token_count": 1
-	//   }}}`
 	var inputMap map[string]interface{}
 	err1 := json.Unmarshal([]byte(relevantData), &inputMap)
 	if err1 != nil {
@@ -192,28 +158,6 @@ func ftDappHandler(c *gin.Context) {
 	}
 	fmt.Println("The function name extracted =", funcName)
 	fmt.Println("The inputStruct Value :", inputStruct)
-	// var requestId string
-	// switch funcName {
-	// case "mint_sample_ft":
-	// 	requestId = "ft-" + smartContractHash + "-mint"
-	// case "transfer_sample_ft":
-	// 	requestId = "ft-" + smartContractHash + "-transfer"
-	// default:
-	// 	fmt.Println("This function name is not allowed")
-	// 	return
-	// }
-	// checkResult, err := checkStringInRequests(requestId)
-	// if err != nil {
-	// 	fmt.Println("Error checking result:", err)
-	// 	return
-	// }
-	// if !checkResult {
-	// 	err = insertRequest(requestId, Pending) //Add constants for the status
-	// 	if err != nil {
-	// 		fmt.Println("Error inserting request:", err)
-	// 		return
-	// 	}
-	// }
 
 	hostFnRegistry := wasmbridge.NewHostFunctionRegistry()
 	wasmPath, err := getWasmContractPath(smartContractHash)
@@ -252,28 +196,8 @@ func ftDappHandler(c *gin.Context) {
 			log.Printf("Error parsing JSON: %v", err)
 			return
 		}
-		// func() {
-		// 	err = updateRequestStatus(requestId, Failed)
-		// 	if err != nil {
-		// 		fmt.Println("Error updating request status:", err)
-		// 		return
-		// 	}
-		// }()
 	}
 
-	// if response.Status {
-	// 	err = updateRequestStatus(requestId, Success)
-	// 	if err != nil {
-	// 		fmt.Println("Error updating request status:", err)
-	// 		return
-	// 	} //handle error here
-	// } else {
-	// 	err = updateRequestStatus(requestId, Failed)
-	// 	if err != nil {
-	// 		fmt.Println("Error updating request status:", err)
-	// 		return
-	// 	}
-	// }
 	resultFinal := gin.H{
 		"message": "DApp executed successfully",
 		"data":    response,
