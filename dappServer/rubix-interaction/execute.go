@@ -18,21 +18,22 @@ import (
 // Execute handles the contract execution process
 func Execute(
 	contractHash string, executorDid string,
-	contractInput string, contractMsgFile string,
+	contractInput string, nodeName string,
 ) (*ExecutionResult, error) {
 	// Load config to get API URL
-	cfg, err := config.LoadConfig(CONFIG_PATH)
+	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-
-	requestID, err := executeSmartContract(cfg.Network.DeployerNodeURL, contractHash, executorDid, contractInput)
+	node := cfg.Nodes[nodeName]
+	url := fmt.Sprintf("http://localhost:%s", node.Port)
+	requestID, err := executeSmartContract(url, contractHash, executorDid, contractInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute smart contract: %w", err)
 	}
 
 	// Call signature-response API
-	if err := signatureResponse(cfg.Network.DeployerNodeURL, requestID); err != nil {
+	if err := signatureResponse(url, requestID); err != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
 

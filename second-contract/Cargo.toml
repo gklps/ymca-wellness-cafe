@@ -1,5 +1,5 @@
 [package]
-name = "first-contract"
+name = "second-contract"
 version = "0.1.0"
 edition = "2021"
 

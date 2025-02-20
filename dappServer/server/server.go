@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	wasmbridge "github.com/rubixchain/rubix-wasm/go-wasm-bridge"
 )
 
@@ -65,6 +64,7 @@ func BootupServer() {
 	// Define endpoints
 	// router.POST(nftDappCallbackHandler, nftDappHandler) // NFT
 	router.POST("/api/call-back-trigger", ftDappHandler) // FT
+	router.POST("/api/trigger-contract-2", ftContract2Handler)
 	router.POST("/api/deploy-contract", APIDeployContract)
 	router.POST("/api/execute-contract", APIExecuteContract)
 
@@ -74,43 +74,17 @@ func BootupServer() {
 	router.Run(":8080")
 }
 
-func contractInputHandler(w http.ResponseWriter, r *http.Request) {
-
-	var req ContractInputRequest
-
-	err := json.NewDecoder(r.Body).Decode(&req)
-
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Printf("Error reading response body: %s\n", err)
-		return
-	}
-
-	err3 := godotenv.Load()
-	if err3 != nil {
-		fmt.Println("Error loading .env file:", err3)
-		return
-	}
-	port := req.Port
-	nodeName := os.Getenv(port)
-	fmt.Println(nodeName)
-
-	resp := RubixResponse{Status: true, Message: "Callback Successful", Result: "Success"}
-	json.NewEncoder(w).Encode(resp)
-
-}
-
 // Handler function for /callback/nft
 func ftDappHandler(c *gin.Context) {
 	var req ContractInputRequest
 	fmt.Println("Handler trggered")
-	cfg, err := config.LoadConfig(".config/config.toml")
+	cfg, err := config.GetConfig()
 	if err != nil {
 		fmt.Errorf("failed to load config: %w", err)
 	}
-
+	config.GetNodeNameByPort(cfg, req.Port)
 	err = json.NewDecoder(c.Request.Body).Decode(&req)
-
+	url := fmt.Sprintf("http://localhost:%d", req.Port)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		fmt.Printf("Error reading response body: %s\n", err)
@@ -120,7 +94,7 @@ func ftDappHandler(c *gin.Context) {
 	smartContractHash := req.SmartContractHash
 	fmt.Println("Received Smart Contract hash: ", smartContractHash)
 
-	smartContractTokenData := rubix_interaction.GetSmartContractData(smartContractHash, cfg.Network.DeployerNodeURL) //config.NodeAddress)
+	smartContractTokenData := rubix_interaction.GetSmartContractData(smartContractHash, url) //config.NodeAddress)
 	if smartContractTokenData == nil {
 		fmt.Println("Unable to fetch latest smart contract data")
 		return
@@ -170,7 +144,7 @@ func ftDappHandler(c *gin.Context) {
 		// config.ContractsInfo["ft"].ContractPath,
 		wasmPath,
 		hostFnRegistry,
-		wasmbridge.WithRubixNodeAddress(cfg.Network.DeployerNodeURL), //config.NodeAddress),
+		wasmbridge.WithRubixNodeAddress(url), //config.NodeAddress),
 		wasmbridge.WithQuorumType(2),
 	)
 	if err != nil {
@@ -181,7 +155,7 @@ func ftDappHandler(c *gin.Context) {
 	executionResult, errExecuteContract := executeAndGetContractResult(wasmModule, relevantData)
 	fmt.Println("----------- FT Execution Result: ", executionResult)
 	if errExecuteContract != nil {
-		fmt.Println("Rhe executionResult is ", executionResult)
+		fmt.Println("The executionResult is ", executionResult)
 		return
 	}
 
@@ -189,7 +163,116 @@ func ftDappHandler(c *gin.Context) {
 
 	// Convert JSON string to struct
 	if executionResult == "success" {
-		response = RubixResponse{Status: true, Message: "NFT Transferred Succesfully"}
+		response = RubixResponse{Status: true, Message: "FT Transferred Succesfully"}
+	} else {
+		err = json.Unmarshal([]byte(executionResult), &response)
+		if err != nil {
+			log.Printf("Error parsing JSON: %v", err)
+			return
+		}
+	}
+
+	resultFinal := gin.H{
+		"message": "DApp executed successfully",
+		"data":    response,
+	}
+
+	// Return a response
+	c.JSON(http.StatusOK, resultFinal)
+}
+
+// Handler function for /callback/nft
+func ftContract2Handler(c *gin.Context) {
+	var req ContractInputRequest
+	fmt.Println("Handler trggered")
+	cfg, err := config.GetConfig()
+	if err != nil {
+		fmt.Errorf("failed to load config: %w", err)
+	}
+	config.GetNodeNameByPort(cfg, req.Port)
+	err = json.NewDecoder(c.Request.Body).Decode(&req)
+	url := fmt.Sprintf("http://localhost:%d", req.Port)
+	err = json.NewDecoder(c.Request.Body).Decode(&req)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		fmt.Printf("Error reading response body: %s\n", err)
+		return
+	}
+	// // config := GetConfig()
+	smartContractHash := req.SmartContractHash
+	fmt.Println("Received Smart Contract hash: ", smartContractHash)
+
+	smartContractTokenData := rubix_interaction.GetSmartContractData(smartContractHash, url) //config.NodeAddress)
+	if smartContractTokenData == nil {
+		fmt.Println("Unable to fetch latest smart contract data")
+		return
+	}
+
+	fmt.Println("Smart Contract Token Data :", string(smartContractTokenData))
+
+	var dataReply SmartContractDataReply
+
+	if err := json.Unmarshal(smartContractTokenData, &dataReply); err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	fmt.Println("Data reply in runDappHandler", dataReply)
+	smartContractData := dataReply.SCTDataReply
+	var relevantData string
+	for _, reply := range smartContractData {
+		fmt.Println("SmartContractData:", reply.SmartContractData)
+		relevantData = reply.SmartContractData
+	}
+	var inputMap map[string]interface{}
+	err1 := json.Unmarshal([]byte(relevantData), &inputMap)
+	if err1 != nil {
+		return
+	}
+	if len(inputMap) != 1 {
+		return
+	}
+
+	var funcName string
+	var inputStruct interface{}
+	for key, value := range inputMap {
+		funcName = key
+		inputStruct = value
+	}
+	fmt.Println("The function name extracted =", funcName)
+	fmt.Println("The inputStruct Value :", inputStruct)
+
+	hostFnRegistry := wasmbridge.NewHostFunctionRegistry()
+	wasmPath, err := getWasmContractPath2(smartContractHash)
+	if err != nil {
+		fmt.Println("Failed to get wasm path")
+	}
+	// Initialize the WASM module
+
+	wasmModule, err := wasmbridge.NewWasmModule(
+		// config.ContractsInfo["ft"].ContractPath,
+		wasmPath,
+		hostFnRegistry,
+		wasmbridge.WithRubixNodeAddress(url), //config.NodeAddress),
+		wasmbridge.WithQuorumType(2),
+	)
+	if err != nil {
+		log.Printf("Failed to initialize WASM module: %v", err)
+		return
+	}
+
+	executionResult, errExecuteContract := executeAndGetContractResult(wasmModule, relevantData)
+	fmt.Println("----------- FT Execution Result: ", executionResult)
+	if errExecuteContract != nil {
+		fmt.Println("The executionResult is ", executionResult)
+		return
+	}
+
+	var response RubixResponse
+
+	// Convert JSON string to struct
+	if executionResult == "success" {
+		response = RubixResponse{Status: true, Message: "FT Transferred Succesfully"}
 	} else {
 		err = json.Unmarshal([]byte(executionResult), &response)
 		if err != nil {
@@ -215,6 +298,30 @@ func getWasmContractPath(contractHash string) (string, error) {
 	}
 	// Here this path should be dynamic
 	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes/node2/SmartContract", contractHash)
+
+	entries, err := os.ReadDir(contractDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".wasm") {
+			return filepath.Join(contractDir, entry.Name()), nil
+		}
+	}
+
+	return "", fmt.Errorf("no wasm contract found in directory: %v", contractDir)
+}
+
+func getWasmContractPath2(contractHash string) (string, error) {
+	currentWorkingDir, err := os.Getwd()
+	fmt.Println("The current working Directory is : ", currentWorkingDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get current working directory: %w", err)
+	}
+	// Here this path should be dynamic
+	//TODO this mst be made into config
+	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes/node3/SmartContract", contractHash)
 
 	entries, err := os.ReadDir(contractDir)
 	if err != nil {

@@ -2,79 +2,63 @@ package config
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+	"log"
+	"sync"
 
-	"github.com/pelletier/go-toml/v2"
+	"github.com/BurntSushi/toml"
 )
 
-// LoadConfig loads the configuration from the config file
-func LoadConfig(configPath string) (*Config, error) {
-
-	content, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read config file: %w", err)
-	}
-
-	var config Config
-	if err := toml.Unmarshal(content, &config); err != nil {
-		return nil, fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	return &config, nil
+// Struct to represent each node
+type Node struct {
+	Name string `toml:"name"`
+	Port string `toml:"port"`
+	DID  string `toml:"did"`
 }
 
-// GenerateConfig creates a default configuration file
-func GenerateConfig(homeDir string) error {
-	configDir := filepath.Join(homeDir, ".rubix-nexus")
-	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return fmt.Errorf("failed to create config directory: %w", err)
-	}
-
-	configPath := filepath.Join(configDir, "config.toml")
-	if _, err := os.Stat(configPath); err == nil {
-		return fmt.Errorf("config file already exists at %s", configPath)
-	}
-
-	defaultConfig := Config{
-		Network: NetworkConfig{
-			DeployerNodeURL: "http://localhost:20011",
-		},
-	}
-
-	configContent, err := toml.Marshal(defaultConfig)
-	if err != nil {
-		return fmt.Errorf("failed to marshal default config: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, configContent, 0644); err != nil {
-		return fmt.Errorf("failed to write config file: %w", err)
-	}
-
-	return nil
+// Struct to hold the configuration
+type Config struct {
+	Nodes map[string]Node `toml:"nodes"`
 }
 
-// ValidateConfig checks if the configuration file is valid
-func ValidateConfig(homeDir string) error {
-	configPath := filepath.Join(homeDir, ".rubix-nexus", "config.toml")
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return fmt.Errorf("config file not found at %s", configPath)
-	}
+var (
+	instance *Config
+	once     sync.Once
+)
 
-	content, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
-	}
+// LoadConfig initializes the configuration (Singleton)
+func LoadConfig(filepath string) {
+	once.Do(func() {
+		instance = &Config{}
+		if _, err := toml.DecodeFile(filepath, instance); err != nil {
+			log.Fatalf("Error loading config file: %v", err)
+		}
+	})
+}
 
-	var config Config
-	if err := toml.Unmarshal(content, &config); err != nil {
-		return fmt.Errorf("invalid config file format: %w", err)
+// GetConfig returns the global configuration instance
+func GetConfig() (*Config, error) {
+	if instance == nil {
+		// log.Fatal("Config not loaded. Call LoadConfig() first.")
+		return nil, fmt.Errorf("Config not loaded. Call LoadConfig() first")
 	}
+	return instance, nil
+}
 
-	// Validate required fields
-	if config.Network.DeployerNodeURL == "" {
-		return fmt.Errorf("deployer_node_url is required")
+// GetNodeNameByPort searches for a node by its port and returns its name
+func GetNodeNameByPort(config *Config, port string) (string, bool) {
+	for _, node := range config.Nodes {
+		if node.Port == port {
+			return node.Name, true
+		}
 	}
+	return "", false
+}
 
-	return nil
+func GetNodeNameByDid(config *Config, did string) (string, bool) {
+	for _, node := range config.Nodes {
+		if node.DID == did {
+			return node.Name, true
+		}
+	}
+	return "", false
 }

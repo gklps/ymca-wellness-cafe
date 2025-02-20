@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"dapp-server/config"
 	rubix "dapp-server/rubix-interaction"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +35,16 @@ func APIExecuteContract(c *gin.Context) {
 		fmt.Printf("Error reading response body: %s\n", err)
 		return
 	}
-	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.ContractInput, "")
+	// Load config to get API URL
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return
+	}
+	nodeName, exist := config.GetNodeNameByDid(cfg, req.ExecutorDid)
+	if !exist {
+		fmt.Println("Failed to fetch node name from config")
+	}
+	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.ContractInput, nodeName)
 	if err != nil {
 		fmt.Println("Failed to execute Contract err :", err)
 	}
@@ -56,7 +66,16 @@ func APIDeployContract(c *gin.Context) {
 		fmt.Printf("Error reading response body: %s\n", err)
 		return
 	}
-	result, err := rubix.Deploy(req.WasmPath, req.LibPath, req.DeployerDid, req.StatePath)
+	// Load config to get API URL
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return
+	}
+	nodeName, exist := config.GetNodeNameByDid(cfg, req.DeployerDid)
+	if !exist {
+		fmt.Println("Failed to fetch node name from config")
+	}
+	result, err := rubix.Deploy(req.WasmPath, req.LibPath, req.DeployerDid, req.StatePath, nodeName)
 	if err != nil {
 		fmt.Println("Failed to deploy contract err :", err)
 	}

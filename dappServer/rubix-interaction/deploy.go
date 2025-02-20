@@ -19,29 +19,31 @@ import (
 const CONFIG_PATH = ".config/config.toml"
 
 // Deploy handles the contract deployment process
-func Deploy(wasmPath string, libPath string, deployerDid string, statePath string) (*DeploymentResult, error) {
+func Deploy(wasmPath string, libPath string, deployerDid string, statePath string, nodeName string) (*DeploymentResult, error) {
 	// Load config to get API URL
-	cfg, err := config.LoadConfig(CONFIG_PATH)
+	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-
-	contractHash, err := generateSmartContract(cfg.Network.DeployerNodeURL, deployerDid, wasmPath, libPath, statePath)
+	node := cfg.Nodes[nodeName]
+	url := fmt.Sprintf("http://localhost:%d", node.Port)
+	contractHash, err := generateSmartContract(url, deployerDid, wasmPath, libPath, statePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate smart contract: %w", err)
 	}
 
-	requestID, err := deploySmartContract(cfg.Network.DeployerNodeURL, contractHash, deployerDid)
+	requestID, err := deploySmartContract(url, contractHash, deployerDid)
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy smart contract: %w", err)
 	}
 
 	// Call signature-response API
-	err2 := signatureResponse(cfg.Network.DeployerNodeURL, requestID)
+	err2 := signatureResponse(url, requestID)
 	if err2 != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
-	RegisterCallBackUrl(contractHash, "8080", "api/call-back-trigger", "20002")
+	// RegisterCallBackUrl(contractHash, "8080", "api/call-back-trigger", "20002")
+	RegisterCallBackUrl(contractHash, "8080", "api/trigger-contract-2", "20003") //This call back url and port should be accepted as a param
 	return &DeploymentResult{
 		ContractHash: contractHash,
 		Success:      true,
