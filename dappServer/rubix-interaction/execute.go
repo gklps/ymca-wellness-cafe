@@ -11,8 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	wasmbridge "github.com/rubixchain/rubix-wasm/go-wasm-bridge"
 )
 
 // Execute handles the contract execution process
@@ -25,8 +23,13 @@ func Execute(
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
-	node := cfg.Nodes[nodeName]
-	url := fmt.Sprintf("http://localhost:%s", node.Port)
+	port, exists := config.GetPortByNodeName(cfg, nodeName)
+	if !exists {
+		fmt.Println("failed to find the node in config")
+	}
+	fmt.Println("port :", port)
+	url := fmt.Sprintf("http://localhost:%s", port)
+	fmt.Println("The url is :", url)
 	requestID, err := executeSmartContract(url, contractHash, executorDid, contractInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute smart contract: %w", err)
@@ -175,27 +178,6 @@ func getSmartContractChainBlocks(baseURL string, contractHash string, onlyLatest
 	return apiResp.SmartContractBlocks, nil
 }
 
-func callWasm(contractHash string, contractMsg string) (string, error) {
-	wasmModulePath, err := getWasmContractPath(contractHash)
-	if err != nil {
-		return "", fmt.Errorf("failed to get wasm contract path: %w", err)
-	}
-
-	hostFnRegistry := wasmbridge.NewHostFunctionRegistry()
-
-	wasmModule, err := wasmbridge.NewWasmModule(wasmModulePath, hostFnRegistry)
-	if err != nil {
-		return "", fmt.Errorf("failed to create wasm module: %w", err)
-	}
-
-	contractResult, err := wasmModule.CallFunction(contractMsg)
-	if err != nil {
-		return "", fmt.Errorf("failed to call Contract function: %w", err)
-	}
-
-	return contractResult, nil
-}
-
 func getWasmContractPath(contractHash string) (string, error) {
 	currentWorkingDir, err := os.Getwd()
 	fmt.Println("The current working Directory is : ", currentWorkingDir)
@@ -217,34 +199,4 @@ func getWasmContractPath(contractHash string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no wasm contract found in directory: %v", contractDir)
-}
-
-func parseContractMsgFromJSON(contractMsgFile string) (string, error) {
-	// Check if the path is relative or absolute
-	if !os.IsPathSeparator(contractMsgFile[0]) && contractMsgFile[0] != '.' {
-		// If it's a relative path, convert it to an absolute path
-		absPath, err := os.Getwd()
-		if err != nil {
-			return "", fmt.Errorf("failed to get current working directory: %w", err)
-		}
-		contractMsgFile = absPath + string(os.PathSeparator) + contractMsgFile
-	}
-
-	file, err := os.Open(contractMsgFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to open contract message file: %w", err)
-	}
-	defer file.Close()
-
-	var contractMsgIntf map[string]interface{}
-	if err := json.NewDecoder(file).Decode(&contractMsgIntf); err != nil {
-		return "", fmt.Errorf("failed to decode contract message: %w", err)
-	}
-
-	contractMsgBytes, err := json.Marshal(contractMsgIntf)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal contract message: %w", err)
-	}
-
-	return string(contractMsgBytes), nil
 }

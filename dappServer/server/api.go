@@ -13,10 +13,9 @@ import (
 
 // Need to check whether all the params here are needed
 type ExecuteRequest struct {
-	ContractHash      string `json:"contract_hash"`
-	ExecutorDid       string `json:"executor_did"`
-	ContractInput     string `json:"contract_input"`     //This is not used anywhere as of now
-	ContractDirectory string `json:"contract_directory"` //This is also not used anywhere
+	ContractHash  string `json:"contract_hash"`
+	ExecutorDid   string `json:"executor_did"`
+	ContractInput string `json:"contract_input"` //This is not used anywhere as of now
 }
 
 type DeployRequest struct {
@@ -44,6 +43,7 @@ func APIExecuteContract(c *gin.Context) {
 	if !exist {
 		fmt.Println("Failed to fetch node name from config")
 	}
+	fmt.Println("The node name is :", nodeName)
 	result, err := rubix.Execute(req.ContractHash, req.ExecutorDid, req.ContractInput, nodeName)
 	if err != nil {
 		fmt.Println("Failed to execute Contract err :", err)

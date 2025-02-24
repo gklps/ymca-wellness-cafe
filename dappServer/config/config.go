@@ -62,3 +62,12 @@ func GetNodeNameByDid(config *Config, did string) (string, bool) {
 	}
 	return "", false
 }
+
+func GetPortByNodeName(config *Config, nodeName string) (string, bool) {
+	for _, node := range config.Nodes {
+		if node.Name == nodeName {
+			return node.Port, true
+		}
+	}
+	return "", false
+}

@@ -78,18 +78,20 @@ func BootupServer() {
 func ftDappHandler(c *gin.Context) {
 	var req ContractInputRequest
 	fmt.Println("Handler trggered")
-	cfg, err := config.GetConfig()
-	if err != nil {
-		fmt.Errorf("failed to load config: %w", err)
-	}
-	config.GetNodeNameByPort(cfg, req.Port)
-	err = json.NewDecoder(c.Request.Body).Decode(&req)
-	url := fmt.Sprintf("http://localhost:%d", req.Port)
+	// cfg, err := config.GetConfig()
+	// if err != nil {
+	// 	fmt.Println("failed to load config: %w", err)
+	// }
+	// config.GetNodeNameByPort(cfg, req.Port)
+	err := json.NewDecoder(c.Request.Body).Decode(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		fmt.Printf("Error reading response body: %s\n", err)
 		return
 	}
+	url := fmt.Sprintf("http://localhost:%s", req.Port)
+	fmt.Println("The url is :", url)
+
 	// // config := GetConfig()
 	smartContractHash := req.SmartContractHash
 	fmt.Println("Received Smart Contract hash: ", smartContractHash)
@@ -134,14 +136,13 @@ func ftDappHandler(c *gin.Context) {
 	fmt.Println("The inputStruct Value :", inputStruct)
 
 	hostFnRegistry := wasmbridge.NewHostFunctionRegistry()
-	wasmPath, err := getWasmContractPath(smartContractHash)
+	wasmPath, err := getWasmContractPath(smartContractHash, req.Port)
 	if err != nil {
 		fmt.Println("Failed to get wasm path")
 	}
 	// Initialize the WASM module
 
 	wasmModule, err := wasmbridge.NewWasmModule(
-		// config.ContractsInfo["ft"].ContractPath,
 		wasmPath,
 		hostFnRegistry,
 		wasmbridge.WithRubixNodeAddress(url), //config.NodeAddress),
@@ -185,20 +186,19 @@ func ftDappHandler(c *gin.Context) {
 func ftContract2Handler(c *gin.Context) {
 	var req ContractInputRequest
 	fmt.Println("Handler trggered")
-	cfg, err := config.GetConfig()
-	if err != nil {
-		fmt.Errorf("failed to load config: %w", err)
-	}
-	config.GetNodeNameByPort(cfg, req.Port)
-	err = json.NewDecoder(c.Request.Body).Decode(&req)
-	url := fmt.Sprintf("http://localhost:%d", req.Port)
-	err = json.NewDecoder(c.Request.Body).Decode(&req)
+	// cfg, err := config.GetConfig()
+	// if err != nil {
+	// 	fmt.Println("failed to load config: %w", err)
+	// }
 
+	err := json.NewDecoder(c.Request.Body).Decode(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		fmt.Printf("Error reading response body: %s\n", err)
 		return
 	}
+	url := fmt.Sprintf("http://localhost:%s", req.Port)
+	fmt.Println("The url is :", url)
 	// // config := GetConfig()
 	smartContractHash := req.SmartContractHash
 	fmt.Println("Received Smart Contract hash: ", smartContractHash)
@@ -243,14 +243,13 @@ func ftContract2Handler(c *gin.Context) {
 	fmt.Println("The inputStruct Value :", inputStruct)
 
 	hostFnRegistry := wasmbridge.NewHostFunctionRegistry()
-	wasmPath, err := getWasmContractPath2(smartContractHash)
+	wasmPath, err := getWasmContractPath(smartContractHash, req.Port)
 	if err != nil {
 		fmt.Println("Failed to get wasm path")
 	}
 	// Initialize the WASM module
 
 	wasmModule, err := wasmbridge.NewWasmModule(
-		// config.ContractsInfo["ft"].ContractPath,
 		wasmPath,
 		hostFnRegistry,
 		wasmbridge.WithRubixNodeAddress(url), //config.NodeAddress),
@@ -290,38 +289,23 @@ func ftContract2Handler(c *gin.Context) {
 	c.JSON(http.StatusOK, resultFinal)
 }
 
-func getWasmContractPath(contractHash string) (string, error) {
+func getWasmContractPath(contractHash, port string) (string, error) {
 	currentWorkingDir, err := os.Getwd()
-	fmt.Println("The current working Directory is : ", currentWorkingDir)
 	if err != nil {
 		return "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
-	// Here this path should be dynamic
-	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes/node2/SmartContract", contractHash)
-
-	entries, err := os.ReadDir(contractDir)
+	fmt.Println("The current working Directory is:", currentWorkingDir)
+	cfg, err := config.GetConfig()
 	if err != nil {
-		return "", fmt.Errorf("failed to read directory: %w", err)
+		fmt.Println("Failed to get config file")
 	}
-
-	for _, entry := range entries {
-		if strings.HasSuffix(entry.Name(), ".wasm") {
-			return filepath.Join(contractDir, entry.Name()), nil
-		}
+	nodeName, exists := config.GetNodeNameByPort(cfg, port)
+	if !exists {
+		fmt.Println("Failed to get node name associated with the port", port)
 	}
-
-	return "", fmt.Errorf("no wasm contract found in directory: %v", contractDir)
-}
-
-func getWasmContractPath2(contractHash string) (string, error) {
-	currentWorkingDir, err := os.Getwd()
-	fmt.Println("The current working Directory is : ", currentWorkingDir)
-	if err != nil {
-		return "", fmt.Errorf("failed to get current working directory: %w", err)
-	}
-	// Here this path should be dynamic
-	//TODO this mst be made into config
-	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes/node3/SmartContract", contractHash)
+	// Construct the path in a cleaner way
+	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes", nodeName, "SmartContract", contractHash)
+	fmt.Println("The contract directory is:", contractDir)
 
 	entries, err := os.ReadDir(contractDir)
 	if err != nil {

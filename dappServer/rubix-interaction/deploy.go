@@ -10,10 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 )
 
 const CONFIG_PATH = ".config/config.toml"
@@ -26,7 +23,7 @@ func Deploy(wasmPath string, libPath string, deployerDid string, statePath strin
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 	node := cfg.Nodes[nodeName]
-	url := fmt.Sprintf("http://localhost:%d", node.Port)
+	url := fmt.Sprintf("http://localhost:%s", node.Port)
 	contractHash, err := generateSmartContract(url, deployerDid, wasmPath, libPath, statePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate smart contract: %w", err)
@@ -209,88 +206,6 @@ func deploySmartContract(baseURL, contractHash, deployerDid string) (string, err
 	}
 
 	return apiResp.Result.Id, nil
-}
-
-// verifyBuildPrerequisites verifies that all required build tools are available
-func verifyBuildPrerequisites() error {
-	// Check if cargo is available
-	if _, err := exec.LookPath("cargo"); err != nil {
-		return fmt.Errorf("Rust toolchain not found. Please install Rust from https://rustup.rs/")
-	}
-
-	// Check for wasm32-unknown-unknown target
-	cmd := exec.Command("rustup", "target", "list", "--installed")
-	output, err := cmd.Output()
-	if err != nil || !strings.Contains(string(output), "wasm32-unknown-unknown") {
-		// Try to add the target
-		addCmd := exec.Command("rustup", "target", "add", "wasm32-unknown-unknown")
-		if err := addCmd.Run(); err != nil {
-			return fmt.Errorf("failed to add wasm32-unknown-unknown target: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// buildWasm builds the Rust project targeting wasm32-unknown-unknown
-func buildWasm(projectDir string) (string, error) {
-	// Create target directory if it doesn't exist
-	targetDir := filepath.Join(projectDir, "target")
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create target directory: %w", err)
-	}
-
-	// Build the project
-	buildCmd := exec.Command("cargo", "build", "--target", "wasm32-unknown-unknown")
-	buildCmd.Dir = projectDir
-	if output, err := buildCmd.CombinedOutput(); err != nil {
-		// Provide more context for build failures
-		errMsg := string(output)
-		if runtime.GOOS == "windows" && strings.Contains(errMsg, "linker `link.exe` not found") {
-			return "", fmt.Errorf("MSVC build tools not found. Please install Visual Studio Build Tools with C++ support")
-		}
-		return "", fmt.Errorf("build failed: %s: %w", errMsg, err)
-	}
-
-	// Get the WASM file name from the directory name, replacing hyphens with underscores
-	projectName := strings.ReplaceAll(filepath.Base(projectDir), "-", "_")
-	wasmFile := filepath.Join(projectDir, "target", "wasm32-unknown-unknown", "debug", projectName+".wasm")
-
-	// Verify the WASM file was created
-	if !FileExists(wasmFile) {
-		return "", fmt.Errorf("WASM file not found after build at %s", wasmFile)
-	}
-
-	// Create artifacts directory and copy WASM file
-	artifactsDir := filepath.Join(filepath.Dir(projectDir), "artifacts")
-	if err := os.MkdirAll(artifactsDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create artifacts directory: %w", err)
-	}
-
-	targetFile := filepath.Join(artifactsDir, projectName+".wasm")
-	input, err := os.ReadFile(wasmFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read WASM file: %w", err)
-	}
-
-	if err := os.WriteFile(targetFile, input, 0644); err != nil {
-		return "", fmt.Errorf("failed to copy WASM file to artifacts: %w", err)
-	}
-
-	return targetFile, nil
-}
-
-// isValidContractDir checks if the directory contains required contract files
-func isValidContractDir(dir string) bool {
-	// Only check for lib.rs, as artifacts will be created during build
-	libPath := filepath.Join(dir, "src", "lib.rs")
-	return FileExists(libPath)
-}
-
-// FileExists checks if a file exists at the given path
-func FileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
 }
 
 func signatureResponse(baseURL, requestID string) error {
