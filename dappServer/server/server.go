@@ -100,8 +100,8 @@ func BootupServer() {
 
 	// router.GET("/request-status", getRequestStatusHandler)
 
-	// Start the server on port 8080
-	router.Run(":8080")
+	// Start the server on port 9000
+	router.Run(":9000")
 }
 func APITransferReward(c *gin.Context) {
 	fmt.Println("APITransferReward triggered")
