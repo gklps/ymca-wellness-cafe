@@ -50,7 +50,7 @@ func (h *WriteToJsonFile) callback(
 	args []wasmtime.Val,
 ) ([]wasmtime.Val, *wasmtime.Trap) {
 	// Extract input arguments
-	inputArgs, _ := utils.HostFunctionParamExtraction(args, true, true)
+	inputArgs, outputArgs := utils.HostFunctionParamExtraction(args, true, true)
 
 	// Extract data and file path from WASM memory
 	dataBytes, memory, err := utils.ExtractDataFromWASM(caller, inputArgs) // Extract data
@@ -109,6 +109,12 @@ func (h *WriteToJsonFile) callback(
 	encoder.SetIndent("", "  ") // Pretty-print JSON
 	if err := encoder.Encode(existingData); err != nil {
 		fmt.Printf("Failed to write JSON data to file: %v\n", err)
+		return utils.HandleError(err.Error())
+	}
+	response := fmt.Sprintf("Succesfully wrote data to DB")
+	err = utils.UpdateDataToWASM(caller, h.allocFunc, response, outputArgs)
+	if err != nil {
+		fmt.Println("Failed to update data to WASM", err)
 		return utils.HandleError(err.Error())
 	}
 

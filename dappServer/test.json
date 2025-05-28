@@ -13,5 +13,30 @@
     "activity_id": "3",
     "block_hash": "22-cc1b7aaa75c9a3d831c31b571d4f1513349d3414b9d0c2d562b0a99e51e6e42c",
     "reward_points": 50
+  },
+  {
+    "activity_id": "4",
+    "block_hash": "23-5fb9fcc9a15421c28ed172db20fa40cb823a4cae97f82747758e0714785d76da",
+    "reward_points": 50
+  },
+  {
+    "activity_id": "5",
+    "block_hash": "24-2e57df4a9e78d2f7aa0334eb2f92ea112ac260cd28a708d5cac493884ce35c0b",
+    "reward_points": 50
+  },
+  {
+    "activity_id": "5",
+    "block_hash": "25-fe0c1293b7ab4d5313a8a1434ec405d6f20a2d1b8ead4eacc84adb0f9afb81e3",
+    "reward_points": 50
+  },
+  {
+    "activity_id": "5",
+    "block_hash": "26-04171935645a672a0c259538973e746e82fb49c89a8eaf2839cf0298de2d9437",
+    "reward_points": 50
+  },
+  {
+    "activity_id": "69",
+    "block_hash": "27-2b839e7f713186cd035f15c6e5fdc8a9f43352b2a8bd1a2dc02f52d0718ae79c",
+    "reward_points": 1
   }
 ]

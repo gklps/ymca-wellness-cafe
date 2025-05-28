@@ -4,6 +4,7 @@ import (
 	"dapp-server/config"
 	rubix_interaction "dapp-server/rubix-interaction"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -18,6 +19,7 @@ import (
 )
 
 const SMART_CONTRACT_HASH = "QmZdkRPESpodVMMpYaf6bvPQ2bMckjMzQKaoBaY7C9jjdD"
+const TRANSFER_CONTRACT_HASH = "QmQVbspit7vvT1NNLFDevGxYcEX1PCyU9yrtULXzvvc4wG"
 
 type ContractInputRequest struct {
 	Port              string `json:"port"`
@@ -51,6 +53,18 @@ type AddActivityRequest struct {
 	AdminDID     string `json:"admin_did"`
 }
 
+type TransferRewardRequest struct {
+	ActivityID string `json:"activity_id"`
+	UserDID    string `json:"user_did"`
+	AdminDID   string `json:"admin_did"`
+}
+
+type Activity struct {
+	ActivityID   string `json:"activity_id"`
+	BlockHash    string `json:"block_hash"`
+	RewardPoints int    `json:"reward_points"`
+}
+
 func BootupServer() {
 	gin.SetMode(gin.ReleaseMode) //
 	log.Println("Current Gin Mode:", gin.Mode())
@@ -77,18 +91,71 @@ func BootupServer() {
 	// Define endpoints
 	// router.POST(nftDappCallbackHandler, nftDappHandler) // NFT
 	router.POST("/api/call-back-trigger", ftDappHandler) // FT
-	router.POST("/api/trigger-contract-2", ftContract2Handler)
+	// router.POST("/api/trigger-contract-2", ftContract2Handler)
 	router.POST("/api/deploy-contract", APIDeployContract)
 	router.POST("/api/execute-contract", APIExecuteContract)
 	router.POST("/api/activity/add", APIAddActivity)
 	router.POST("/api/callback/trigger", APICallBackTrigger)
+	router.POST("/api/rewards/transfer", APITransferReward)
 
 	// router.GET("/request-status", getRequestStatusHandler)
 
 	// Start the server on port 8080
 	router.Run(":8080")
 }
+func APITransferReward(c *gin.Context) {
+	fmt.Println("APITransferReward triggered")
+	var req TransferRewardRequest
+	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		fmt.Printf("Error reading response body: %s\n", err)
+		return
+	}
+	fmt.Println("The request body is:", req)
+	cfg, err := config.GetConfig()
+	if err != nil {
+		fmt.Println("failed to load config: %w", err)
+	}
+	nodePort, exists := config.GetPortByDid(cfg, req.AdminDID)
+	if !exists {
+		fmt.Println("failed to get node port: not found")
+		return
+	}
+	fmt.Println("The node port is:", nodePort)
+	url := fmt.Sprintf("http://localhost:%s", nodePort)
+	fmt.Println("The url is :", url)
+	filePath := "C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json"
+	rewardPoints, err := GetRewardPoints(filePath, req.ActivityID)
+	if err != nil {
+		fmt.Println("Failed to get reward points")
+		return
+	}
+	// contractMsg := fmt.Sprintf(`{"activity_id":"%s","reward_points":%d,"user_did":%s,"admin_did":%s}`, req.ActivityID, rewardPoints, req.UserDID, req.AdminDID)
+	contractMsg := fmt.Sprintf(`{"transfer_sample_ft":{"name": "rubix1", "ft_info": {"comment":"Transfer of reward via contract","ft_count":%f,"ft_name":"ytoken","sender": "%s","creatorDID": "%s", "receiver": "%s"}}}`, float64(rewardPoints), req.AdminDID, req.AdminDID, req.UserDID)
+	fmt.Println("The contract message is:", contractMsg)
+	smartContractResponse, err := rubix_interaction.ExecuteSmartContract(url, TRANSFER_CONTRACT_HASH, req.AdminDID, contractMsg)
 
+	if err != nil {
+		fmt.Println("failed to execute smart contract:", err)
+		return
+	}
+	fmt.Println("Smart contract response:", smartContractResponse)
+	response := rubix_interaction.SignatureResponse(url, smartContractResponse)
+	if err != nil {
+		fmt.Println("failed to send signature response:", err)
+		return
+	}
+	fmt.Println("Signature response sent successfully")
+	resultFinal := gin.H{
+		"message": "Reward Transferred succesfully",
+		"data":    response,
+	}
+
+	// Return a response
+	c.JSON(http.StatusOK, resultFinal)
+
+}
 func APIAddActivity(c *gin.Context) {
 	fmt.Println("APIAddActivity triggered")
 	var req AddActivityRequest
@@ -119,15 +186,20 @@ func APIAddActivity(c *gin.Context) {
 		return
 	}
 	fmt.Println("Smart contract response:", smartContractResponse)
-	rubix_interaction.SignatureResponse(url, smartContractResponse)
-	if err != nil {
+	response := rubix_interaction.SignatureResponse(url, smartContractResponse)
+	if response != nil {
 		fmt.Println("failed to send signature response:", err)
 		return
 	}
 	fmt.Println("Signature response sent successfully")
+	block := rubix_interaction.GetSmartContractData(SMART_CONTRACT_HASH, url) //config.NodeAddress)
+	if block == nil {
+		fmt.Println("Unable to fetch latest smart contract data")
+		return
+	}
 	resultFinal := gin.H{
-		"message": "DApp executed successfully",
-		"data":    smartContractResponse,
+		"message": "Activity added to smart contract tokenchain",
+		"data":    string(block),
 	}
 
 	// Return a response
@@ -168,58 +240,18 @@ func APICallBackTrigger(c *gin.Context) {
 	fmt.Println("Data reply in APICallBackTrigger", dataReply)
 	smartContractData := dataReply.SCTDataReply
 	var relevantBlock *SCTDataReply
-	// var data []map[string]interface{}
 
-	// err = json.Unmarshal([]byte(smartContractData), &data)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// // Access the value
-	// firstKey := ""
-	// for key := range data[0] { // Extract the first key (e.g., "2")
-	// 	firstKey = key
-	// 	break
-	// }
-	// fmt.Println(firstKey)
-
-	// var smartContractData []SCTDataReply
-
-	// Unmarshal JSON into the variable
-	// err = json.Unmarshal([]byte(smartContractData), &smartContractData)
-	// if err != nil {
-	// 	log.Fatalf("Error unmarshaling JSON: %v", err)
-	// }
-
-	// Print the result
-	var blockId string
+	// var blockId string
 	var blockNo uint64
 	for _, data := range smartContractData {
-		// fmt.Printf("BlockNo: %d, BlockId: %s, SmartContractData: %s\n",
-		// 	data.BlockNo, data.BlockId, data.SmartContractData)
-		// fmt.Println("The smart contract data is :", data.SmartContractData)
 		relevantBlock = &data // Assuming you want the last block
 		fmt.Println("The relevant block is :", relevantBlock)
-		blockId = data.BlockId
+		// blockId = data.BlockId
 		blockNo = data.BlockNo
 	}
 	if blockNo == 0 {
+		fmt.Println("The block number is zero which is the genesis block")
 		return
-		fmt.Println("The block number is 13")
-		relevantBlock = getNextSCTDataAfterBlockID(smartContractData, blockId)
-		fmt.Println("The relevant block is :", relevantBlock)
-	} else {
-		fmt.Println("The block number is not 0")
-		// blockId, err := getBlockIDFromJSONFile("C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json")
-		// if err != nil {
-		// 	fmt.Println("Error reading block ID from JSON file:", err)
-		// 	// return
-		// }
-		// fmt.Println("The block ID is:", blockId)
-		//Here we have an array of SCTDataReply, in this we need to extract the latest one
-		// relevantBlock = getNextSCTDataAfterBlockID(smartContractData, blockId)
-		// fmt.Println("The relevant block is :", relevantBlock)
-		//
 	}
 	var parsedData struct {
 		ActivityID   string `json:"activity_id"`
@@ -355,9 +387,11 @@ func ftDappHandler(c *gin.Context) {
 		fmt.Println("SmartContractData:", reply.SmartContractData)
 		relevantData = reply.SmartContractData
 	}
+	fmt.Println("The relevant data is :", relevantData)
 	var inputMap map[string]interface{}
 	err1 := json.Unmarshal([]byte(relevantData), &inputMap)
 	if err1 != nil {
+		fmt.Println("Error unmarshalling input map:", err1)
 		return
 	}
 	if len(inputMap) != 1 {
@@ -567,4 +601,29 @@ func executeAndGetContractResult(wasmModule *wasmbridge.WasmModule, contractInpu
 	}
 
 	return contractResult, nil
+}
+
+// GetRewardPoints takes a JSON file path and an activity ID and returns the reward points for that activity.
+func GetRewardPoints(filePath string, activityID string) (int, error) {
+	// Read the JSON file
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return 0, err
+	}
+
+	// Parse the JSON into a slice of Activity structs
+	var activities []Activity
+	err = json.Unmarshal(data, &activities)
+	if err != nil {
+		return 0, err
+	}
+
+	// Search for the activity ID and return the reward points
+	for _, activity := range activities {
+		if activity.ActivityID == activityID {
+			return activity.RewardPoints, nil
+		}
+	}
+
+	return 0, errors.New("activity ID not found")
 }
