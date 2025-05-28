@@ -1,0 +1,17 @@
+[
+  {
+    "activity_id": "1",
+    "block_hash": "19-94e5e625c75c6a54376421218d11bc473750a538297281f4fb04495460cc2cad",
+    "reward_points": 50
+  },
+  {
+    "activity_id": "2",
+    "block_hash": "21-ab0f0d04923a9ff607f59e07d4808d33efb69684f5c85213d56bd2cb57e20391",
+    "reward_points": 50
+  },
+  {
+    "activity_id": "3",
+    "block_hash": "22-cc1b7aaa75c9a3d831c31b571d4f1513349d3414b9d0c2d562b0a99e51e6e42c",
+    "reward_points": 50
+  }
+]

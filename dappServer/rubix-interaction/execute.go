@@ -30,13 +30,13 @@ func Execute(
 	fmt.Println("port :", port)
 	url := fmt.Sprintf("http://localhost:%s", port)
 	fmt.Println("The url is :", url)
-	requestID, err := executeSmartContract(url, contractHash, executorDid, contractInput)
+	requestID, err := ExecuteSmartContract(url, contractHash, executorDid, contractInput)
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute smart contract: %w", err)
 	}
 
 	// Call signature-response API
-	if err := signatureResponse(url, requestID); err != nil {
+	if err := SignatureResponse(url, requestID); err != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
 
@@ -47,8 +47,7 @@ func Execute(
 	}, nil
 }
 
-// Dummy API function (to be implemented with real API call)
-func executeSmartContract(baseURL, contractHash, executorDid, contractMsg string) (string, error) {
+func ExecuteSmartContract(baseURL, contractHash, executorDid, contractMsg string) (string, error) {
 	// Create request body
 	requestBody := struct {
 		Comment            string `json:"comment"`

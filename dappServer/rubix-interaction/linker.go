@@ -1,0 +1,117 @@
+package rubix_interaction
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/bytecodealliance/wasmtime-go"
+	wasmContext "github.com/rubixchain/rubix-wasm/go-wasm-bridge/context"
+	"github.com/rubixchain/rubix-wasm/go-wasm-bridge/host"
+	"github.com/rubixchain/rubix-wasm/go-wasm-bridge/utils"
+)
+
+type WriteToJsonFile struct {
+	allocFunc *wasmtime.Func
+	memory    *wasmtime.Memory
+}
+
+func NewWriteToJsonFile() *WriteToJsonFile {
+	return &WriteToJsonFile{}
+}
+
+func (h *WriteToJsonFile) Name() string {
+	return "write_to_json_file"
+}
+
+func (h *WriteToJsonFile) FuncType() *wasmtime.FuncType {
+	return wasmtime.NewFuncType(
+		[]*wasmtime.ValType{
+			wasmtime.NewValType(wasmtime.KindI32), // data_ptr
+			wasmtime.NewValType(wasmtime.KindI32), // data_len
+			wasmtime.NewValType(wasmtime.KindI32), // file_path_ptr
+			wasmtime.NewValType(wasmtime.KindI32), // file_path_len
+		},
+		[]*wasmtime.ValType{wasmtime.NewValType(wasmtime.KindI32)}, // return i32
+	)
+}
+
+func (h *WriteToJsonFile) Initialize(allocFunc, deallocFunc *wasmtime.Func, memory *wasmtime.Memory, nodeAddress string, quorumType int, wasmCtx *wasmContext.WasmContext) {
+	h.allocFunc = allocFunc
+	h.memory = memory
+}
+
+func (h *WriteToJsonFile) Callback() host.HostFunctionCallBack {
+	return h.callback
+}
+
+func (h *WriteToJsonFile) callback(
+	caller *wasmtime.Caller,
+	args []wasmtime.Val,
+) ([]wasmtime.Val, *wasmtime.Trap) {
+	// Extract input arguments
+	inputArgs, _ := utils.HostFunctionParamExtraction(args, true, true)
+
+	// Extract data and file path from WASM memory
+	dataBytes, memory, err := utils.ExtractDataFromWASM(caller, inputArgs) // Extract data
+	if err != nil {
+		fmt.Println("Failed to extract data from WASM", err)
+		return utils.HandleError(err.Error())
+	}
+
+	// filePathBytes, _, err := utils.ExtractDataFromWASM(caller, inputArgs) // Extract file path
+	// if err != nil {
+	// 	fmt.Println("Failed to extract file path from WASM", err)
+	// 	return utils.HandleError(err.Error())
+	// }
+	h.memory = memory
+
+	// data := string(dataBytes)
+	// filePath := string(filePathBytes)
+
+	// Parse the data into JSON (if necessary) and write it to a file
+	var jsonData interface{}
+	if err := json.Unmarshal(dataBytes, &jsonData); err != nil {
+		fmt.Printf("Failed to parse JSON data: %v\n", err)
+		return utils.HandleError("Invalid JSON data")
+	}
+
+	filePath := "C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json"
+
+	// Step 1: Read the existing file content
+	existingContent, err := os.ReadFile(filePath)
+	if err != nil && !os.IsNotExist(err) { // Ignore error if file doesn't exist
+		fmt.Printf("Failed to read existing file: %v\n", err)
+		return utils.HandleError(err.Error())
+	}
+
+	var existingData []interface{}
+	if len(existingContent) > 0 {
+		if err := json.Unmarshal(existingContent, &existingData); err != nil {
+			fmt.Printf("Failed to parse existing JSON data: %v\n", err)
+			return utils.HandleError("Invalid existing JSON data")
+		}
+	} else {
+		existingData = []interface{}{}
+	}
+
+	// Step 2: Append new data to existing data
+	existingData = append(existingData, jsonData)
+
+	// Step 3: Write the updated data back to the file
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		panic(err) // Handle the error appropriately in production code
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ") // Pretty-print JSON
+	if err := encoder.Encode(existingData); err != nil {
+		fmt.Printf("Failed to write JSON data to file: %v\n", err)
+		return utils.HandleError(err.Error())
+	}
+
+	fmt.Printf("Successfully wrote data to JSON file: %s\n", filePath)
+	return utils.HandleOk() // Return success
+}

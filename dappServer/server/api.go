@@ -15,7 +15,7 @@ import (
 type ExecuteRequest struct {
 	ContractHash  string `json:"contract_hash"`
 	ExecutorDid   string `json:"executor_did"`
-	ContractInput string `json:"contract_input"` //This is not used anywhere as of now
+	ContractInput string `json:"contract_input"`
 }
 
 type DeployRequest struct {
@@ -49,6 +49,18 @@ func APIExecuteContract(c *gin.Context) {
 		fmt.Println("Failed to execute Contract err :", err)
 	}
 	fmt.Println("The result returned : ", result)
+	port, exist := config.GetPortByNodeName(cfg, nodeName)
+	if !exist {
+		fmt.Println("Failed to fetch port from config")
+	}
+
+	url := fmt.Sprintf("http://localhost:%s", port)
+	fmt.Println("The url is :", url)
+	// Call signature-response API
+	if err := rubix.SignatureResponse(url, result.ContractResult); err != nil {
+		return
+	}
+
 	resultFinal := gin.H{
 		"message": "DApp executed successfully",
 		"data":    result,

@@ -35,7 +35,7 @@ func Deploy(wasmPath string, libPath string, deployerDid string, statePath strin
 	}
 
 	// Call signature-response API
-	err2 := signatureResponse(url, requestID)
+	err2 := SignatureResponse(url, requestID)
 	if err2 != nil {
 		return nil, fmt.Errorf("failed to process signature response: %w", err)
 	}
@@ -208,7 +208,7 @@ func deploySmartContract(baseURL, contractHash, deployerDid string) (string, err
 	return apiResp.Result.Id, nil
 }
 
-func signatureResponse(baseURL, requestID string) error {
+func SignatureResponse(baseURL, requestID string) error {
 	// Create request body
 	requestBody := struct {
 		Id       string `json:"id"`
