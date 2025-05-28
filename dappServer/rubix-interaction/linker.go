@@ -1,6 +1,7 @@
 package rubix_interaction
 
 import (
+	"dapp-server/config"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -76,8 +77,8 @@ func (h *WriteToJsonFile) callback(
 		return utils.HandleError("Invalid JSON data")
 	}
 
-	filePath := "C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json"
-
+	// filePath := "C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json"
+	filePath := config.GetEnvConfig().ActivityUpdatePath
 	// Step 1: Read the existing file content
 	existingContent, err := os.ReadFile(filePath)
 	if err != nil && !os.IsNotExist(err) { // Ignore error if file doesn't exist

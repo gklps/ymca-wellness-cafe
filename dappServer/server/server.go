@@ -18,8 +18,9 @@ import (
 	wasmbridge "github.com/rubixchain/rubix-wasm/go-wasm-bridge"
 )
 
-const SMART_CONTRACT_HASH = "QmZdkRPESpodVMMpYaf6bvPQ2bMckjMzQKaoBaY7C9jjdD"
-const TRANSFER_CONTRACT_HASH = "QmQVbspit7vvT1NNLFDevGxYcEX1PCyU9yrtULXzvvc4wG"
+// /home/rubix/Rubix/adminNode
+// const SMART_CONTRACT_HASH = "QmZdkRPESpodVMMpYaf6bvPQ2bMckjMzQKaoBaY7C9jjdD"
+// const TRANSFER_CONTRACT_HASH = "QmQVbspit7vvT1NNLFDevGxYcEX1PCyU9yrtULXzvvc4wG"
 
 type ContractInputRequest struct {
 	Port              string `json:"port"`
@@ -125,7 +126,7 @@ func APITransferReward(c *gin.Context) {
 	fmt.Println("The node port is:", nodePort)
 	url := fmt.Sprintf("http://localhost:%s", nodePort)
 	fmt.Println("The url is :", url)
-	filePath := "C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json"
+	filePath := config.GetEnvConfig().ActivityUpdatePath
 	rewardPoints, err := GetRewardPoints(filePath, req.ActivityID)
 	if err != nil {
 		fmt.Println("Failed to get reward points")
@@ -134,7 +135,12 @@ func APITransferReward(c *gin.Context) {
 	// contractMsg := fmt.Sprintf(`{"activity_id":"%s","reward_points":%d,"user_did":%s,"admin_did":%s}`, req.ActivityID, rewardPoints, req.UserDID, req.AdminDID)
 	contractMsg := fmt.Sprintf(`{"transfer_sample_ft":{"name": "rubix1", "ft_info": {"comment":"Transfer of reward via contract","ft_count":%f,"ft_name":"ytoken","sender": "%s","creatorDID": "%s", "receiver": "%s"}}}`, float64(rewardPoints), req.AdminDID, req.AdminDID, req.UserDID)
 	fmt.Println("The contract message is:", contractMsg)
-	smartContractResponse, err := rubix_interaction.ExecuteSmartContract(url, TRANSFER_CONTRACT_HASH, req.AdminDID, contractMsg)
+	transferContractHash := config.GetEnvConfig().TransferContract //Loading the smart contract hash from config
+	if transferContractHash == "" {
+		fmt.Println("transferContractHash is not set in the config")
+		return
+	}
+	smartContractResponse, err := rubix_interaction.ExecuteSmartContract(url, transferContractHash, req.AdminDID, contractMsg)
 
 	if err != nil {
 		fmt.Println("failed to execute smart contract:", err)
@@ -180,7 +186,12 @@ func APIAddActivity(c *gin.Context) {
 	fmt.Println("The url is :", url)
 	contractMsg := fmt.Sprintf(`{"activity_id":"%s","reward_points":%d}`, req.ActivityID, req.RewardPoints)
 	fmt.Println("The contract message is:", contractMsg)
-	smartContractResponse, err := rubix_interaction.ExecuteSmartContract(url, SMART_CONTRACT_HASH, req.AdminDID, contractMsg)
+	smartContractHash := config.GetEnvConfig().AddActivityContract //Loading the smart contract hash from config
+	if smartContractHash == "" {
+		fmt.Println("Smart contract hash is not set in the config")
+		return
+	}
+	smartContractResponse, err := rubix_interaction.ExecuteSmartContract(url, smartContractHash, req.AdminDID, contractMsg)
 	if err != nil {
 		fmt.Println("failed to execute smart contract:", err)
 		return
@@ -192,7 +203,12 @@ func APIAddActivity(c *gin.Context) {
 		return
 	}
 	fmt.Println("Signature response sent successfully")
-	block := rubix_interaction.GetSmartContractData(SMART_CONTRACT_HASH, url) //config.NodeAddress)
+	addActivityContractHash := config.GetEnvConfig().AddActivityContract //Loading the smart contract hash from config
+	if addActivityContractHash == "" {
+		fmt.Println("addActivityContractHash is not set in the config")
+		return
+	}
+	block := rubix_interaction.GetSmartContractData(addActivityContractHash, url) //config.NodeAddress)
 	if block == nil {
 		fmt.Println("Unable to fetch latest smart contract data")
 		return
@@ -571,12 +587,17 @@ func getWasmContractPath(contractHash, port string) (string, error) {
 	if err != nil {
 		fmt.Println("Failed to get config file")
 	}
+	path, exists := config.GetPathByPort(cfg, port)
+	if !exists {
+		fmt.Println("Failed to get path by port")
+		return "", fmt.Errorf("failed to get path by port: %s", port)
+	}
 	nodeName, exists := config.GetNodeNameByPort(cfg, port)
 	if !exists {
 		fmt.Println("Failed to get node name associated with the port", port)
 	}
 	// Construct the path in a cleaner way
-	contractDir := filepath.Join(currentWorkingDir, "rubix-nodes", nodeName, "SmartContract", contractHash)
+	contractDir := filepath.Join(path, nodeName, "SmartContract", contractHash)
 	fmt.Println("The contract directory is:", contractDir)
 
 	entries, err := os.ReadDir(contractDir)

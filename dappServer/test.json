@@ -38,5 +38,20 @@
     "activity_id": "69",
     "block_hash": "27-2b839e7f713186cd035f15c6e5fdc8a9f43352b2a8bd1a2dc02f52d0718ae79c",
     "reward_points": 1
+  },
+  {
+    "activity_id": "70",
+    "block_hash": "30-84b8f611f686dbcae1365767ba5c5cf7986a0cc5283974e2baf6af8a4d4cdf11",
+    "reward_points": 1
+  },
+  {
+    "activity_id": "70",
+    "block_hash": "31-d5abf9bfc5086bca201d7528fb5f077eeeab78453f6c29908722dc5d1d829bc3",
+    "reward_points": 1
+  },
+  {
+    "activity_id": "72",
+    "block_hash": "32-7b98c13f8868376bc077499904b1512c509a6fff221dac7fed83476ba4df38e3",
+    "reward_points": 1
   }
 ]

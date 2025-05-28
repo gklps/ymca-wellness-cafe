@@ -16,6 +16,7 @@ func main() {
 	// hostFunction := registry.GetHostFunctions()
 	// fmt.Println("Host function is :", hostFunction)
 	config.LoadConfig(CONFIG_PATH)
+	config.LoadEnvConfig()
 	server.BootupServer()
 
 }
