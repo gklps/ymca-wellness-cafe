@@ -153,9 +153,18 @@ func APITransferReward(c *gin.Context) {
 		return
 	}
 	fmt.Println("Signature response sent successfully")
+	var data interface{}
+	if response == nil {
+    		data = gin.H{
+	"rewards awarded": float64(rewardPoints),
+	"activity_id":     req.ActivityID,
+    		}
+	} else {
+	    data = response
+	}
 	resultFinal := gin.H{
 		"message": "Reward Transferred succesfully",
-		"data":    response,
+		"data":    data,
 	}
 
 	// Return a response
