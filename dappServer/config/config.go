@@ -94,8 +94,10 @@ func GetPortByDid(config *Config, did string) (string, bool) {
 
 type EnvConfig struct {
 	AddActivityContract string
+	AddAdminContract    string
 	TransferContract    string
 	ActivityUpdatePath  string
+	AdminUpdatePath     string
 }
 
 var (
@@ -116,7 +118,9 @@ func LoadEnvConfig() *EnvConfig {
 		envInstance = &EnvConfig{
 			AddActivityContract: os.Getenv("ADD_ACTIVITY_CONTRACT"),
 			TransferContract:    os.Getenv("TRANSFER_CONTRACT"),
+			AddAdminContract:    os.Getenv("ADD_ADMIN_CONTRACT"),
 			ActivityUpdatePath:  os.Getenv("ACTIVITY_UPDATE_PATH"),
+			AdminUpdatePath:     os.Getenv("ADD_ADMIN_PATH"),
 		}
 	})
 	return envInstance

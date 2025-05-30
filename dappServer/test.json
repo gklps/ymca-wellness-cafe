@@ -53,5 +53,15 @@
     "activity_id": "72",
     "block_hash": "32-7b98c13f8868376bc077499904b1512c509a6fff221dac7fed83476ba4df38e3",
     "reward_points": 1
+  },
+  {
+    "activity_id": "72",
+    "block_hash": "34-10b53be06584f6a66354bd46a106b7faabc372c8545147781e4ca96bd7c1dec7",
+    "reward_points": 1
+  },
+  {
+    "activity_id": "72",
+    "block_hash": "37-44795657478940525bc36a47b06da26eb6a371326cc47babc471d2f233fdb244",
+    "reward_points": 1
   }
 ]

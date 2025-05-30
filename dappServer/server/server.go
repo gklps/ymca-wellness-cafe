@@ -48,6 +48,15 @@ type SCTDataReply struct {
 	InitiatorSignData  string `json:"InitiatorSignData"`
 }
 
+type AddActivity struct {
+	ActivityID   string `json:"activity_id"`
+	RewardPoints int    `json:"reward_points"`
+}
+
+type AddActivityPayload struct {
+	AddActivity AddActivity `json:"add_activity"`
+}
+
 type AddActivityRequest struct {
 	ActivityID   string `json:"activity_id"`
 	RewardPoints int    `json:"reward_points"`
@@ -98,6 +107,8 @@ func BootupServer() {
 	router.POST("/api/activity/add", APIAddActivity)
 	router.POST("/api/callback/trigger", APICallBackTrigger)
 	router.POST("/api/rewards/transfer", APITransferReward)
+	router.POST("/api/admin/add", APIAddAdmin)
+	router.POST("/api/callback/add-admin", APIAddAdminCallBackTrigger)
 
 	// router.GET("/request-status", getRequestStatusHandler)
 
@@ -155,12 +166,12 @@ func APITransferReward(c *gin.Context) {
 	fmt.Println("Signature response sent successfully")
 	var data interface{}
 	if response == nil {
-    		data = gin.H{
-	"rewards awarded": float64(rewardPoints),
-	"activity_id":     req.ActivityID,
-    		}
+		data = gin.H{
+			"rewards awarded": float64(rewardPoints),
+			"activity_id":     req.ActivityID,
+		}
 	} else {
-	    data = response
+		data = response
 	}
 	resultFinal := gin.H{
 		"message": "Reward Transferred succesfully",
@@ -193,7 +204,7 @@ func APIAddActivity(c *gin.Context) {
 	fmt.Println("The node port is:", nodePort)
 	url := fmt.Sprintf("http://localhost:%s", nodePort)
 	fmt.Println("The url is :", url)
-	contractMsg := fmt.Sprintf(`{"activity_id":"%s","reward_points":%d}`, req.ActivityID, req.RewardPoints)
+	contractMsg := fmt.Sprintf(`{"add_activity": {"activity_id":"%s","reward_points":%d}}`, req.ActivityID, req.RewardPoints)
 	fmt.Println("The contract message is:", contractMsg)
 	smartContractHash := config.GetEnvConfig().AddActivityContract //Loading the smart contract hash from config
 	if smartContractHash == "" {
@@ -278,15 +289,11 @@ func APICallBackTrigger(c *gin.Context) {
 		fmt.Println("The block number is zero which is the genesis block")
 		return
 	}
-	var parsedData struct {
-		ActivityID   string `json:"activity_id"`
-		RewardPoints int    `json:"reward_points"`
-	}
-
-	err = json.Unmarshal([]byte(relevantBlock.SmartContractData), &parsedData)
+	var payload AddActivityPayload
+	err = json.Unmarshal([]byte(relevantBlock.SmartContractData), &payload)
 	if err != nil {
-		fmt.Println("Error:", err)
-		// return
+		fmt.Println("Error unmarshaling JSON:", err)
+		return
 	}
 	registry := wasmbridge.NewHostFunctionRegistry()
 
@@ -308,7 +315,7 @@ func APICallBackTrigger(c *gin.Context) {
 		log.Printf("Failed to initialize WASM module: %v", err)
 		return
 	}
-	contractInput := fmt.Sprintf(`{"add_activity": {"activity_id":"%s","reward_points":%d,"block_hash":"%s"}}`, parsedData.ActivityID, parsedData.RewardPoints, relevantBlock.BlockId)
+	contractInput := fmt.Sprintf(`{"add_activity": {"activity_id":"%s","reward_points":%d,"block_hash":"%s"}}`, payload.AddActivity.ActivityID, payload.AddActivity.RewardPoints, relevantBlock.BlockId)
 	fmt.Println("The contract input is :", contractInput)
 	result, err := wasmModule.CallFunction(contractInput)
 	if err != nil {

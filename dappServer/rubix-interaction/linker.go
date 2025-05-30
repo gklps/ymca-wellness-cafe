@@ -12,6 +12,16 @@ import (
 	"github.com/rubixchain/rubix-wasm/go-wasm-bridge/utils"
 )
 
+type Activity struct {
+	ActivityID   string `json:"activity_id"`
+	BlockHash    string `json:"block_hash"`
+	RewardPoints int    `json:"reward_points"`
+}
+
+type AddAdmin struct {
+	AdminDID string `json:"admin_did"`
+}
+
 type WriteToJsonFile struct {
 	allocFunc *wasmtime.Func
 	memory    *wasmtime.Memory
@@ -71,14 +81,48 @@ func (h *WriteToJsonFile) callback(
 	// filePath := string(filePathBytes)
 
 	// Parse the data into JSON (if necessary) and write it to a file
+	var rawData map[string]interface{}
+	if err := json.Unmarshal(dataBytes, &rawData); err != nil {
+		fmt.Printf("Failed to parse incoming JSON: %v\n", err)
+		return utils.HandleError(err.Error())
+	}
+
 	var jsonData interface{}
+	var filePath string
+
+	// Step 2: Dynamically identify the type and determine the file path
+	if _, ok := rawData["activity_id"]; ok {
+		var activity Activity
+		if err := json.Unmarshal(dataBytes, &activity); err != nil {
+			fmt.Printf("Failed to unmarshal as Activity: %v\n", err)
+			return utils.HandleError(err.Error())
+		}
+		jsonData = activity
+		filePath = config.GetEnvConfig().ActivityUpdatePath // File for Activity data
+	} else if _, ok := rawData["admin_did"]; ok {
+		var addAdmin AddAdmin
+		if err := json.Unmarshal(dataBytes, &addAdmin); err != nil {
+			fmt.Printf("Failed to unmarshal as AddAdmin: %v\n", err)
+			return utils.HandleError(err.Error())
+		}
+		jsonData = addAdmin
+		fmt.Println("The AddAdmin data is :", addAdmin)
+		fmt.Println("The jsonData data is :", jsonData)
+		filePath = config.GetEnvConfig().AdminUpdatePath // File for AddAdmin data
+		fmt.Println("The file path is :", filePath)
+	} else {
+		fmt.Println("Unknown data structure")
+		return utils.HandleError(err.Error())
+	}
+
+	// var jsonData interface{}
 	if err := json.Unmarshal(dataBytes, &jsonData); err != nil {
 		fmt.Printf("Failed to parse JSON data: %v\n", err)
 		return utils.HandleError("Invalid JSON data")
 	}
 
 	// filePath := "C:/Users/allen/Working-repo/ymca/ymca-wellness-cafe-project/dappServer/test.json"
-	filePath := config.GetEnvConfig().ActivityUpdatePath
+	// filePath := config.GetEnvConfig().ActivityUpdatePath
 	// Step 1: Read the existing file content
 	existingContent, err := os.ReadFile(filePath)
 	if err != nil && !os.IsNotExist(err) { // Ignore error if file doesn't exist
